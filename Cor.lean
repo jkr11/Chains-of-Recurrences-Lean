@@ -8,12 +8,14 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Real.ConjExponents
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
--- Define BR structure
+-- Define Basic Recurrence structure
 /-
   BR has the following structure:
   f = {φ₀,⊙,f₁}
+  where φ₀ is a constant, ⬝ is either + or ⋆ and f₁ is a function over ℕ
 -/
 section BR
+
 structure BR :=
   (r0 : ℝ)
   (bop : ℝ → ℝ → ℝ)
@@ -121,7 +123,7 @@ lemma mul_constant_to_mul_BR (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
     rw [← mul_assoc]
     rw [ih]
 
--- lemma 3.12
+-- lemma 3.12 - this should be doable a lot better - why can simp not finish this after distributive? does it not work well over Finset and ℝ?
 lemma add_add_BR_add_BR (x : ℝ) (y : ℝ) (f1 : ℕ → ℝ) (g1: ℕ → ℝ) (n : ℕ) :
   evalBR {r0 := x, bop := (· + ·), f := f1} n + evalBR {r0 := y, bop := (· + ·), f := g1} n = evalBR {r0 := x + y, bop := (· + ·), f := λ n => f1 n + g1 n} n := by
   rw [evalBR_add_equals_sum_f]
@@ -132,14 +134,27 @@ lemma add_add_BR_add_BR (x : ℝ) (y : ℝ) (f1 : ℕ → ℝ) (g1: ℕ → ℝ)
   rw [Finset.sum_add_distrib]
   rw [← add_assoc]
   rw [add_comm (x + _)]
-  rw [add_assoc]
+  rw [add_assoc y]
   rw [add_assoc x]
-  rw [add_assoc x]
+  rw [add_comm x y]
+  rw [add_assoc y]
+
+-- lemma 3.13
+lemma mul_BR_mul_BR (φ0 ψ0 : ℝ) (f1 g1 : ℕ → ℝ) (n : ℕ) :
+  evalBR {r0 := φ0, bop := (· + ·), f := f1} n *
+  evalBR {r0 := ψ0, bop := (· + ·), f := g1} n =
+  evalBR {r0 := φ0 * ψ0, bop := (· + ·), f := λ n => g1 n * evalBR {r0 := φ0, bop := (· + ·), f := f1} n +
+                 f1 n * evalBR {r0 := ψ0, bop := (· + ·), f := g1} n } n := by
+  rw [evalBR_add_equals_sum_f]
+  rw [evalBR_add_equals_sum_f]
+  rw [right_distrib, left_distrib, mul_add]
+  rw [Finset.sum_mul_sum]
   sorry
 
+
 end BR
-/-
-def h : ℝ := 1.0
+
+/-def h : ℝ := 1.0
 def z : ℝ := 1.0
 
 def f1 (_j : ℕ) : ℝ := 3 * h
@@ -149,10 +164,7 @@ def myBR : BR :=
 
 #eval 3 * evalBR myBR 0
 #eval evalBR myBR 1
-#eval evalBR myBR 2
--/
-
-
+#eval evalBR myBR 2-/
 
 
 section CR
