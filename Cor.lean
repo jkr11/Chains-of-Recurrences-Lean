@@ -154,7 +154,7 @@ lemma mul_BR_mul_BR (φ0 ψ0 : ℝ) (f1 g1 : ℕ → ℝ) (n : ℕ) :
 
 end BR
 
-/-def h : ℝ := 1.0
+def h : ℚ := 1.0
 def z : ℝ := 1.0
 
 def f1 (_j : ℕ) : ℝ := 3 * h
@@ -164,7 +164,7 @@ def myBR : BR :=
 
 #eval 3 * evalBR myBR 0
 #eval evalBR myBR 1
-#eval evalBR myBR 2-/
+#eval evalBR myBR 2
 
 
 section CR
@@ -173,8 +173,13 @@ inductive CR
 | liftBRToCR : BR → CR
 | recurCR : ℝ → (ℝ → ℝ → ℝ) → CR → CR
 
+inductive PureCR (bop : ℝ → ℝ → ℝ)
+| PureBR : ℝ → ℝ → PureCR bop
+| recurPureCR : ℝ → (ℝ → ℝ → ℝ) → PureCR bop
+
 open BR
 open CR
+open PureCR
 
 def CR_to_BR : CR → BR
 | (liftBRToCR br) => br
@@ -185,10 +190,27 @@ def CR_to_BR : CR → BR
 def evalCR (cr : CR) (n : ℕ) : ℝ :=
   evalBR (CR_to_BR cr) n
 
+/-def PureCR_to_CR : PureCR (bop : ℝ → ℝ → ℝ) → CR
+| (recurPureCR r0 bop pcr') =>
+  let cr' := PureCR_to_CR pcr'
+  CR.mk r0 bop (λ n => (cr'.f n))
+  | sorry-/
+
 lemma evalBR_eq_evalCR_of_CR_to_BR (cr : CR) (n : ℕ) :
   evalBR (CR_to_BR cr) n = evalCR cr n := by
   rfl
 
-#check evalBR_eq_evalCR_of_CR_to_BR
+-- lemma 3.16
+lemma add_const_to_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
+  r + (evalCR (recurCR c0 (· + ·) cr) n) = evalCR (recurCR (c0 + r) (· + ·) cr) n := by
+  sorry
+
+-- lemma 17
+lemma mul_const_to_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
+  r * (evalCR (recurCR c0 (· * ·) cr) n) = evalCR (recurCR (c0 * r) (· * ·) cr) n := by
+  sorry
+
+/-lemma add_const_to_pure_add_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
+  r * (evalCR (recurPureCR))-/
 
 end CR
