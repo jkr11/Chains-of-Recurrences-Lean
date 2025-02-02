@@ -4,6 +4,8 @@ import Cor.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.List.Basic
 import Mathlib.Data.List.Range
+import Mathlib.Data.Real.ConjExponents
+import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
 -- Define BR structure
 /-
@@ -61,6 +63,27 @@ lemma mul_constant_to_BR (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
     rw [mul_add]
     rw [ih]
 
+-- lemma 2.8 TODO: replace Ring with Reals somehow? or replace real with Ring R everywhere
+-- TODO: this required adding c > 0 after using rpow_add and ih
+lemma exp_with_add_BR (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) (h : 0 < c) :
+ c ^ (evalBR {r0 := x, bop := (· + ·), f := f1} n) =
+  evalBR {r0 := c ^ x, bop := (· * ·), f := λ n => c ^ f1 n} n := by
+  induction n with
+  | zero =>
+    simp [evalBR]
+  | succ n ih =>
+    rw [evalBR_succ]
+    rw [evalBR_succ]
+    simp
+    rw [Real.rpow_add]
+    simp
+    rw [ih]
+    simp
+    exact h
+
+
+
+
 -- lemma 2.9
 lemma mul_constant_to_mul_BR (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
   c * evalBR {r0 := x, bop := (· * ·), f := f1} n =
@@ -74,6 +97,7 @@ lemma mul_constant_to_mul_BR (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
     simp
     rw [← mul_assoc]
     rw [ih]
+
 end BR
 /-
 def h : ℝ := 1.0
@@ -108,8 +132,9 @@ def evalCR (cr : CR) (n : ℕ) : ℝ :=
 
 lemma evalBR_eq_evalCR_of_CR_to_BR (cr : CR) (n : ℕ) :
   evalBR (CR_to_BR cr) n = evalCR cr n := by
-  -- rw [evalCR]
   rfl
+
+#check evalBR_eq_evalCR_of_CR_to_BR
 
 
 
