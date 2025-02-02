@@ -4,6 +4,7 @@ import Cor.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.List.Basic
 import Mathlib.Data.List.Range
+import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Real.ConjExponents
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
@@ -34,7 +35,32 @@ lemma evalBR_succ (br : BR) (n : ℕ) :
     rw [List.foldl_append]
     simp[List.foldl]
 
-#check evalBR_succ
+lemma evalBR_add_equals_sum_f (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
+  evalBR {r0 := x, bop := (· + ·), f := f1} n =
+  x + ∑ i in Finset.range n, f1  i := by
+  induction n with
+  | zero =>
+    simp [evalBR]
+  | succ n ih =>
+    rw [evalBR_succ]
+    simp
+    rw [Finset.sum_range_succ]
+    simp [ih]
+    rw [add_assoc]
+
+lemma evalBR_mul_equals_prd_f (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
+  evalBR {r0 := x, bop := (· * ·), f := f1} n =
+  x * ∏ i in Finset.range n, f1 i := by
+  induction n with
+  | zero =>
+    simp [evalBR]
+  | succ n ih  =>
+    rw [evalBR_succ]
+    simp
+    rw [ih]
+    rw [Finset.prod_range_succ]
+    rw [mul_assoc]
+
 
 -- this is lemma 2.6 in the paper
 lemma add_constant_to_BR (c : ℝ) (φ : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
@@ -81,9 +107,6 @@ lemma exp_with_add_BR (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) (h : 0 < 
     simp
     exact h
 
-
-
-
 -- lemma 2.9
 lemma mul_constant_to_mul_BR (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
   c * evalBR {r0 := x, bop := (· * ·), f := f1} n =
@@ -97,6 +120,22 @@ lemma mul_constant_to_mul_BR (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
     simp
     rw [← mul_assoc]
     rw [ih]
+
+-- lemma 3.12
+lemma add_add_BR_add_BR (x : ℝ) (y : ℝ) (f1 : ℕ → ℝ) (g1: ℕ → ℝ) (n : ℕ) :
+  evalBR {r0 := x, bop := (· + ·), f := f1} n + evalBR {r0 := y, bop := (· + ·), f := g1} n = evalBR {r0 := x + y, bop := (· + ·), f := λ n => f1 n + g1 n} n := by
+  rw [evalBR_add_equals_sum_f]
+  rw [evalBR_add_equals_sum_f]
+  rw [evalBR_add_equals_sum_f]
+  rw [add_assoc]
+  rw [← add_assoc]
+  rw [Finset.sum_add_distrib]
+  rw [← add_assoc]
+  rw [add_comm (x + _)]
+  rw [add_assoc]
+  rw [add_assoc x]
+  rw [add_assoc x]
+  sorry
 
 end BR
 /-
@@ -112,6 +151,10 @@ def myBR : BR :=
 #eval evalBR myBR 1
 #eval evalBR myBR 2
 -/
+
+
+
+
 section CR
 
 inductive CR
@@ -135,8 +178,5 @@ lemma evalBR_eq_evalCR_of_CR_to_BR (cr : CR) (n : ℕ) :
   rfl
 
 #check evalBR_eq_evalCR_of_CR_to_BR
-
-
-
 
 end CR
