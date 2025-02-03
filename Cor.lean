@@ -24,25 +24,45 @@ structure BR :=
 def evalBR (br : BR) (n : ℕ) : ℝ :=
   match br with
   | ⟨r0, binop, f⟩ =>
-    let vals : List ℝ := List.map f (List.range n)
+    let vals : List ℝ := List.map f (List.range' 1 n)
     List.foldl binop r0 vals
 
+@[simp]
+lemma evalBR_zero (br : BR) :
+  evalBR br 0 = br.r0 := by
+  rfl
+
+@[simp]
 lemma evalBR_succ (br : BR) (n : ℕ) :
-  evalBR br (n+1) = br.bop (evalBR br n) (br.f n) := by
+  evalBR br (n+1) = br.bop (evalBR br n) (br.f (n+1)) := by
   cases br with
   | mk r0 bop f =>
-    simp [evalBR]
-    rw [List.range_succ]
-    rw [List.map_append]
-    rw [List.foldl_append]
-    simp[List.foldl]
+    induction n with
+    | zero =>
+      simp
+      rfl
+    | succ n ih =>
+      simp
+      unfold evalBR
+      rw [List.range'_eq_map_range 1 (n + 1 + 1)]
+      rw [List.range_succ]
+      rw [List.map_append]
+      rw [List.range_succ]
+      rw [List.map_append]
+      simp [List.foldl]
+      congr
+      rw [List.range'_eq_map_range 2 n]
+      simp [List.map]
+      sorry
+
+
 
 lemma evalBR_add_equals_sum_f (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
   evalBR {r0 := x, bop := (· + ·), f := f1} n =
-  x + ∑ i in Finset.range n, f1  i := by
+  x + ∑ i in Finset.range (n), f1  i := by
   induction n with
   | zero =>
-    simp [evalBR]
+    simp
   | succ n ih =>
     rw [evalBR_succ]
     simp
@@ -175,7 +195,7 @@ inductive CR
 
 inductive PureCR (bop : ℝ → ℝ → ℝ)
 | PureBR : ℝ → ℝ → PureCR bop
-| recurPureCR : ℝ → (ℝ → ℝ → ℝ) → PureCR bop
+| recurPureCR : ℝ → PureCR bop → PureCR bop
 
 open BR
 open CR
@@ -190,27 +210,84 @@ def CR_to_BR : CR → BR
 def evalCR (cr : CR) (n : ℕ) : ℝ :=
   evalBR (CR_to_BR cr) n
 
-/-def PureCR_to_CR : PureCR (bop : ℝ → ℝ → ℝ) → CR
-| (recurPureCR r0 bop pcr') =>
-  let cr' := PureCR_to_CR pcr'
-  CR.mk r0 bop (λ n => (cr'.f n))
-  | sorry-/
+def PureCR_to_CR (bop : ℝ → ℝ → ℝ) (pcr : PureCR bop) : CR :=
+match pcr with
+| PureBR c0 c1 => liftBRToCR (BR.mk c0 bop (λ c1 => c1))
+| recurPureCR c0 pcr' => recurCR c0 bop (PureCR_to_CR bop pcr')
 
+@[simp]
 lemma evalBR_eq_evalCR_of_CR_to_BR (cr : CR) (n : ℕ) :
   evalBR (CR_to_BR cr) n = evalCR cr n := by
   rfl
 
+@[simp]
+lemma evalCR_zero (cr' : CR) (r : ℝ) (bop : ℝ → ℝ → ℝ) :
+  evalCR (recurCR r bop cr') 0 = r := by
+  unfold evalCR
+  simp [evalBR]
+  unfold CR_to_BR
+  simp
+
+class LoopVariant (A : Type) (R : Type) where
+  evalAtIx : A → ℕ → R
+
+instance loopVariantCR : LoopVariant CR ℝ where
+  evalAtIx cr n := evalCR cr n
+
+open loopVariantCR
+#check LoopVariant.evalAtIx
+
+
+variable {bop : ℝ → ℝ → ℝ} (h_comm : ∀ x y : ℝ, bop x y = bop y x)
+
+lemma evalCR_succ (cr' : CR) (r : ℝ) (bop : ℝ → ℝ → ℝ) (n : ℕ) (h_comm : ∀ x y : ℝ, bop x y = bop y x) :
+  evalCR (recurCR r bop cr') (n+1)  = bop (evalCR (recurCR r bop cr') n) (evalBR (CR_to_BR cr') (n+1)) := by
+  simp
+  rw [← evalBR_eq_evalCR_of_CR_to_BR]
+  rw [evalBR_succ]
+  congr
+  unfold CR_to_BR
+  simp
+  cases cr'
+  case liftBRToCR br =>
+    rw [CR_to_BR]
+    unfold evalCR
+    unfold CR_to_BR
+    rw [CR_to_BR]
+    simp
+    congr
+
+
+
+
+
+
+
+
+
 -- lemma 3.16
 lemma add_const_to_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
   r + (evalCR (recurCR c0 (· + ·) cr) n) = evalCR (recurCR (c0 + r) (· + ·) cr) n := by
-  sorry
+  induction n with
+  | zero =>
+    rw [evalCR]
+    rw [← evalBR_eq_evalCR_of_CR_to_BR]
+    unfold evalBR
+    simp
+    unfold CR_to_BR
+    simp
+    rw [add_comm]
+  | succ ih n =>
+    rw [evalCR]
+    rw [evalBR_succ]
+    sorry
 
 -- lemma 17
 lemma mul_const_to_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
   r * (evalCR (recurCR c0 (· * ·) cr) n) = evalCR (recurCR (c0 * r) (· * ·) cr) n := by
   sorry
 
-/-lemma add_const_to_pure_add_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
-  r * (evalCR (recurPureCR))-/
+--lemma add_const_to_pure_add_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
+--  r * (evalCR (recurPureCR)) =
 
 end CR
