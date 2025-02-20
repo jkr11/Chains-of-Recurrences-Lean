@@ -24,7 +24,7 @@ structure BR :=
 def evalBR (br : BR) (n : ℕ) : ℝ :=
   match br with
   | ⟨r0, binop, f⟩ =>
-    let vals : List ℝ := List.map f (List.range' 1 n)
+    let vals : List ℝ := List.map f (List.range n)
     List.foldl binop r0 vals
 
 @[simp]
@@ -32,43 +32,56 @@ lemma evalBR_zero (br : BR) :
   evalBR br 0 = br.r0 := by
   rfl
 
+lemma evalBR_one (r0 : ℝ) (f1 : ℕ → ℝ) :
+  evalBR { r0 := r0, bop := (· + ·), f := f1} 1 = r0 + f1 0 := by
+  simp [evalBR]
+  simp [List.map]
+
 @[simp]
 lemma evalBR_succ (br : BR) (n : ℕ) :
-  evalBR br (n+1) = br.bop (evalBR br n) (br.f (n+1)) := by
+  evalBR br (n+1) = br.bop (evalBR br (n)) (br.f (n)) := by
   cases br with
   | mk r0 bop f =>
     induction n with
     | zero =>
       simp
-      rfl
-    | succ n ih =>
+      rw [evalBR]
       simp
-      unfold evalBR
-      rw [List.range'_eq_map_range 1 (n + 1 + 1)]
       rw [List.range_succ]
       rw [List.map_append]
+      simp
+    | succ n ih =>
+      simp
+      rw [ih]
+      simp
+      rw [evalBR]
+      simp
       rw [List.range_succ]
       rw [List.map_append]
       simp [List.foldl]
       congr
-      rw [List.range'_eq_map_range 2 n]
-      simp [List.map]
-      sorry
 
+@[simp]
+lemma FinsetSumSucc_eq_plus_succ (n : ℕ) (f1 : ℕ → ℝ) :
+  ∑ i in Finset.range n, f1 i + f1 n = ∑ i in Finset.range (n + 1), f1 i  := by
+  rw [Finset.sum_range_succ]
 
 
 lemma evalBR_add_equals_sum_f (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
   evalBR {r0 := x, bop := (· + ·), f := f1} n =
-  x + ∑ i in Finset.range (n), f1  i := by
+  x + ∑ i in Finset.range (n), f1 i := by
   induction n with
   | zero =>
+    rw [evalBR]
     simp
   | succ n ih =>
     rw [evalBR_succ]
     simp
-    rw [Finset.sum_range_succ]
-    simp [ih]
+    rw [ih]
     rw [add_assoc]
+    congr
+    simp
+
 
 lemma evalBR_mul_equals_prd_f (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
   evalBR {r0 := x, bop := (· * ·), f := f1} n =
