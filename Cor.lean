@@ -172,17 +172,28 @@ lemma add_add_BR_add_BR (x : ℝ) (y : ℝ) (f1 : ℕ → ℝ) (g1: ℕ → ℝ)
   rw [add_comm x y]
   rw [add_assoc y]
 
+
+open Finset
+
 -- lemma 3.13
 lemma mul_BR_mul_BR (φ0 ψ0 : ℝ) (f1 g1 : ℕ → ℝ) (n : ℕ) :
   evalBR {r0 := φ0, bop := (· + ·), f := f1} n *
   evalBR {r0 := ψ0, bop := (· + ·), f := g1} n =
-  evalBR {r0 := φ0 * ψ0, bop := (· + ·), f := λ n => g1 n * evalBR {r0 := φ0, bop := (· + ·), f := f1} n +
-                 f1 n * evalBR {r0 := ψ0, bop := (· + ·), f := g1} n } n := by
-  rw [evalBR_add_equals_sum_f]
-  rw [evalBR_add_equals_sum_f]
-  rw [right_distrib, left_distrib, mul_add]
-  rw [Finset.sum_mul_sum]
-  sorry
+  evalBR {r0 := φ0 * ψ0, bop := (· + ·), f := λ n => g1 n * evalBR {r0 := φ0, bop := (· + ·), f := f1} (n-1) +
+                 f1 n * evalBR {r0 := ψ0, bop := (· + ·), f := g1} (n-1) } n := by
+    rw [evalBR_add_equals_sum_f]
+    rw [evalBR_add_equals_sum_f]
+    rw [evalBR_add_equals_sum_f]
+    simp [evalBR_add_equals_sum_f]
+    rw [mul_add]
+    rw [add_mul]
+    rw [add_mul]
+    rw [sum_mul_sum]
+    ring
+    sorry -- have to use direct calc here
+
+
+
 
 
 end BR
@@ -218,7 +229,7 @@ def CR_to_BR : CR → BR
 | (liftBRToCR br) => br
 | (recurCR r0 bop cr') =>
   let br' := CR_to_BR cr'
-  BR.mk r0 bop (λ n => (br'.f n))
+  BR.mk r0 bop (λ n => evalBR br' n)
 
 def evalCR (cr : CR) (n : ℕ) : ℝ :=
   evalBR (CR_to_BR cr) n
@@ -254,21 +265,21 @@ open loopVariantCR
 variable {bop : ℝ → ℝ → ℝ} (h_comm : ∀ x y : ℝ, bop x y = bop y x)
 
 lemma evalCR_succ (cr' : CR) (r : ℝ) (bop : ℝ → ℝ → ℝ) (n : ℕ) (h_comm : ∀ x y : ℝ, bop x y = bop y x) :
-  evalCR (recurCR r bop cr') (n+1)  = bop (evalCR (recurCR r bop cr') n) (evalBR (CR_to_BR cr') (n+1)) := by
-  simp
-  rw [← evalBR_eq_evalCR_of_CR_to_BR]
-  rw [evalBR_succ]
-  congr
-  unfold CR_to_BR
-  simp
-  cases cr'
-  case liftBRToCR br =>
-    rw [CR_to_BR]
-    unfold evalCR
-    unfold CR_to_BR
-    rw [CR_to_BR]
+  evalCR (recurCR r bop cr') (n+1)  = bop (evalCR (recurCR r bop cr') (n)) (evalBR (CR_to_BR cr') (n+1)) := by
+  induction n with
+  | zero =>
     simp
-    congr
+    rw [evalCR]
+    rw [evalBR_succ]
+    rw [evalBR_zero]
+    dsimp [CR_to_BR] at *
+    rw [evalCR]
+    simp [evalBR]
+    sorry
+  | succ n ih =>
+    sorry
+
+
 
 
 
