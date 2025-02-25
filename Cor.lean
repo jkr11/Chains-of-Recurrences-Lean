@@ -236,7 +236,7 @@ def evalCR (cr : CR) (n : ℕ) : ℝ :=
 
 def PureCR_to_CR (bop : ℝ → ℝ → ℝ) (pcr : PureCR bop) : CR :=
 match pcr with
-| PureBR c0 c1 => liftBRToCR (BR.mk c0 bop (λ c1 => c1))
+| PureBR c0 _ => liftBRToCR (BR.mk c0 bop (λ c1 => c1))
 | recurPureCR c0 pcr' => recurCR c0 bop (PureCR_to_CR bop pcr')
 
 @[simp]
@@ -252,20 +252,8 @@ lemma evalCR_zero (cr' : CR) (r : ℝ) (bop : ℝ → ℝ → ℝ) :
   unfold CR_to_BR
   simp
 
-class LoopVariant (A : Type) (R : Type) where
-  evalAtIx : A → ℕ → R
-
-instance loopVariantCR : LoopVariant CR ℝ where
-  evalAtIx cr n := evalCR cr n
-
-open loopVariantCR
-#check LoopVariant.evalAtIx
-
-
-variable {bop : ℝ → ℝ → ℝ} (h_comm : ∀ x y : ℝ, bop x y = bop y x)
-
-lemma evalCR_succ (cr' : CR) (r : ℝ) (bop : ℝ → ℝ → ℝ) (n : ℕ) (h_comm : ∀ x y : ℝ, bop x y = bop y x) :
-  evalCR (recurCR r bop cr') (n+1)  = bop (evalCR (recurCR r bop cr') (n)) (evalBR (CR_to_BR cr') (n+1)) := by
+lemma evalCR_succ (cr' : CR) (r : ℝ) (bop : ℝ → ℝ → ℝ) (n : ℕ):
+  evalCR (recurCR r bop cr') (n+1)  = bop (evalCR (recurCR r bop cr') (n)) (evalBR (CR_to_BR cr') (n)) := by
   induction n with
   | zero =>
     simp
@@ -275,18 +263,14 @@ lemma evalCR_succ (cr' : CR) (r : ℝ) (bop : ℝ → ℝ → ℝ) (n : ℕ) (h_
     dsimp [CR_to_BR] at *
     rw [evalCR]
     simp [evalBR]
-    sorry
   | succ n ih =>
-    sorry
-
-
-
-
-
-
-
-
-
+    rw [evalBR_eq_evalCR_of_CR_to_BR]
+    rw [ih]
+    rw [evalCR]
+    rw [evalBR_succ]
+    dsimp [CR_to_BR] at *
+    simp
+    congr
 
 
 -- lemma 3.16
@@ -301,15 +285,27 @@ lemma add_const_to_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
     unfold CR_to_BR
     simp
     rw [add_comm]
-  | succ ih n =>
-    rw [evalCR]
-    rw [evalBR_succ]
-    sorry
+  | succ n ih =>
+    rw [evalCR_succ]
+    simp
+    rw [evalCR_succ]
+    rw [evalBR_eq_evalCR_of_CR_to_BR]
+    conv =>
+      lhs
+      rw [← add_assoc]
+    rw [ih]
 
 -- lemma 17
 lemma mul_const_to_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
   r * (evalCR (recurCR c0 (· * ·) cr) n) = evalCR (recurCR (c0 * r) (· * ·) cr) n := by
-  sorry
+  induction n with
+  | zero =>
+    simp
+    ring
+  | succ n ih =>
+    simp [evalCR_succ]
+    rw [← mul_assoc]
+    rw [ih]
 
 --lemma add_const_to_pure_add_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
 --  r * (evalCR (recurPureCR)) =
