@@ -185,10 +185,11 @@ lemma mul_constant_to_mul_BR (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) :
     rw [← mul_assoc]
     rw [ih]
 
--- lemma 2.10
+-- lemma 2.10 (only for f > 0 (f n >= 0), we should maybe just generalize to CommRing?)
 lemma br_pow_const (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ)
- (n : ℕ) (h : 0 < c) :
-  (evalBR {r0 := x, bop := BinOp.Mul, f := f1} n) ^ c = evalBR {r0 := x ^ c, bop := BinOp.Mul, f := f1 ^ c} n := by
+  (n : ℕ) (hx : x ≥ 0) (hf : ∀x : ℕ, f1 x ≥ 0) :
+  (evalBR {r0 := x, bop := BinOp.Mul, f := f1} n) ^ c =
+    evalBR {r0 := x ^ c, bop := BinOp.Mul, f := f1 ^ c} n := by
   induction n with
   | zero =>
     simp
@@ -197,10 +198,9 @@ lemma br_pow_const (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ)
     rw [evalBR_succ]
     simp
     rw [Real.mul_rpow]
-    rw [ih]
-    sorry -- have to use ring here also
-    sorry
-
+    · rw [ih]
+    . sorry
+    . exact hf n
 
 -- lemma 2.11
 lemma log_br (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) (h1 : f1 (n) != 0 ∧ (evalBR {r0 := x, bop := BinOp.Mul, f := f1} n) != 0) :
@@ -242,7 +242,7 @@ lemma add_add_BR_add_BR (x : ℝ) (y : ℝ) (f1 : ℕ → ℝ) (g1: ℕ → ℝ)
 open Finset
 open BinOp
 -- lemma 3.13
-lemma mul_BR_mul_BR (φ0 ψ0 : ℝ) (f1 g1 : ℕ → ℝ) (n : ℕ) :
+lemma mul_BR_add_BR (φ0 ψ0 : ℝ) (f1 g1 : ℕ → ℝ) (n : ℕ) :
   evalBR {r0 := φ0, bop := BinOp.Add, f := f1} n *
   evalBR {r0 := ψ0, bop := BinOp.Add, f := g1} n =
   evalBR {r0 := φ0 * ψ0, bop := Add, f := λ n => (g1 n * evalBR {r0 := φ0, bop := Add, f := f1} (n) +
