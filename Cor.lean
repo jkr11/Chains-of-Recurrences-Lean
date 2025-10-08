@@ -199,8 +199,10 @@ lemma br_pow_const (c : ℝ) (x : ℝ) (f1 : ℕ → ℝ)
     simp
     rw [Real.mul_rpow]
     · rw [ih]
-    . sorry
-    . exact hf n
+    . rw [evalBR_mul_equals_prd_f]; apply mul_nonneg hx;
+      apply Finset.prod_nonneg
+      intro i _; exact hf i
+    . simp [hf]
 
 -- lemma 2.11
 lemma log_br (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) (h1 : f1 (n) != 0 ∧ (evalBR {r0 := x, bop := BinOp.Mul, f := f1} n) != 0) :
