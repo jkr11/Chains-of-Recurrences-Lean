@@ -217,7 +217,7 @@ lemma log_br (x : ℝ) (f1 : ℕ → ℝ) (n : ℕ) (h1 : f1 (n) != 0 ∧ (evalB
     rw [Real.log_mul]
     simp
     rw [ih]
-    sorry
+    . simp; sorry
     sorry
     sorry
 
@@ -315,6 +315,7 @@ section CR
 inductive CR
 | liftBRToCR : BR → CR
 | recurCR : ℝ → BinOp → CR → CR
+| appCR : List CR -> CR
 
 
 inductive PureCR (bop : BinOp)
