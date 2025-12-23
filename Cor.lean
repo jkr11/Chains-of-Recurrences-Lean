@@ -422,9 +422,14 @@ lemma evalPureCR_succ (bop : BinOp) (x : ℝ) (pcr' : PureCR bop):
   simp
 
 
-def PureCR_size {bop : BinOp} : PureCR bop → ℕ
-| (PureBR _ _) => 0
-| (recurPureCR _ pcr') => 1 + PureCR_size pcr'
+
+def PureCR.size {bop : BinOp} : PureCR bop → ℕ
+| (PureBR _ _) => 1
+| (recurPureCR _ pcr') => 1 + pcr'.size
+
+@[simp]
+lemma PureCR.size_pos {bop : BinOp} (p : PureCR bop) : 0 < p.size := by
+  induction p <;> simp [PureCR.size]
 
 def pureCR_mul_scalar (c : ℝ) : PureCR Add → PureCR Add
 | PureBR c0 x => PureBR (c * c0) (c * x)
@@ -457,6 +462,90 @@ lemma add_const_to_pure_sum_CR (c : ℝ) (phi : PureCR Add) :
       simp
       rw [ih]
       rw [← pureCR_mul_scalar]
+
+
+def pure_zip {bop : BinOp} (f : ℝ → ℝ → ℝ) : PureCR bop → PureCR bop → PureCR bop
+  | PureBR r1 r2, PureBR s1 s2 =>
+      PureBR (f r1 s1) (f r2 s2)
+  | recurPureCR r pcr_r, recurPureCR s pcr_s =>
+      recurPureCR (f r s) (pure_zip f pcr_r pcr_s)
+  | a, _ => a
+
+def pure_zip_eq {bop : BinOp} (f : ℝ → ℝ → ℝ) : (phi psi : PureCR bop) → phi.size = psi.size → PureCR bop
+  | PureBR r1 r2, PureBR s1 s2, _ =>
+      PureBR (f r1 s1) (f r2 s2)
+  | recurPureCR r phi', recurPureCR s psi', h =>
+    let h_next : phi'.size = psi'.size := by
+      simp [PureCR.size] at h
+      exact h
+    recurPureCR (f r s) (pure_zip_eq f phi' psi' h_next)
+  | PureBR _ _, recurPureCR _ psi', h => by
+    simp [PureCR.size] at h
+    trivial
+  | recurPureCR _ _, PureBR _ _, h => by
+    rw [PureCR.size] at h
+    trivial
+
+
+-- Prop2.22
+lemma add_PureCR_sum (phi psi : PureCR Add) (h : phi.size = psi.size) (n : ℕ) :
+  evalPureCR Add phi n + evalPureCR Add psi n = evalPureCR Add (pure_zip_eq (· + ·) phi psi h) n := by
+  revert psi h n
+  induction phi with
+  | PureBR r1 r2 =>
+    intro psi h n
+    match psi, h with
+    | PureBR s1 s2, _ =>
+      simp [pure_zip_eq, evalPureCR]
+      simp [PureCR_to_CR]
+      rw [evalCR, evalCR, evalCR]
+      simp [CR_to_BR]
+      rw [add_add_BR_add_BR]
+    | recurPureCR _ psi', h_size =>
+      simp [PureCR.size] at h_size
+      have pos := psi'.size_pos
+      rw [← h_size] at pos
+      simp at pos
+
+  | recurPureCR r phi' ih_phi =>
+    intro psi h n
+    match psi, h with
+    | PureBR _ _, h_size =>
+      simp [PureCR.size] at h_size
+      have pos := phi'.size_pos
+      rw [h_size] at pos
+      simp at pos
+    | recurPureCR s psi', h_size =>
+      simp [pure_zip_eq]
+      induction n with
+      | zero =>
+        simp [evalPureCR, PureCR_to_CR]
+      | succ n n_ih =>
+        simp [evalPureCR_succ, evalBinOp, evalPureCR, PureCR_to_CR]
+        simp [evalCR_succ]
+        simp [evalPureCR, PureCR_to_CR] at n_ih
+        conv_lhs =>
+          arg 1
+          rw [add_comm]
+        rw [add_assoc]
+        conv_lhs =>
+          arg 2
+          rw [← add_assoc]
+          rw [n_ih]
+        rw [← add_assoc]
+        rw [add_comm]
+        rw [← add_assoc]
+        simp [evalPureCR] at ih_phi
+        conv_lhs =>
+          arg 1
+          rw [add_comm]
+        rw [ih_phi]
+        ring
+
+
+
+
+
 
 
 
