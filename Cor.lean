@@ -315,8 +315,6 @@ section CR
 inductive CR
 | liftBRToCR : BR → CR
 | recurCR : ℝ → BinOp → CR → CR
-| appCR : List CR -> CR
-
 
 inductive PureCR (bop : BinOp)
 | PureBR : ℝ → ℝ → PureCR bop
@@ -332,15 +330,13 @@ def CR_to_BR : CR → BR
   let br' := CR_to_BR cr'
   BR.mk r0 bop (λ n => evalBR br' n)
 
-
 def evalCR (cr : CR) (n : ℕ) : ℝ :=
   evalBR (CR_to_BR cr) n
 
 
-
 def PureCR_to_CR (bop : BinOp) (pcr : PureCR bop) : CR :=
 match pcr with
-| PureBR c0 _ => liftBRToCR (BR.mk c0 bop (λ c1 => c1))
+| PureBR c0 c1 => liftBRToCR (BR.mk c0 bop (λ _ => c1))
 | recurPureCR c0 pcr' => recurCR c0 bop (PureCR_to_CR bop pcr')
 
 
@@ -362,22 +358,17 @@ lemma evalCR_succ (cr' : CR) (r : ℝ) (bop : BinOp) (n : ℕ):
   induction n with
   | zero =>
     simp
-    rw [evalCR]
-    rw [evalBR_succ]
-    rw [evalBR_zero]
+    rw [evalCR,evalBR_succ,evalBR_zero]
     dsimp [CR_to_BR] at *
-    rw [evalCR]
-    simp [evalBR]
+    rfl
   | succ n ih =>
     rw [evalBR_eq_evalCR_of_CR_to_BR]
+    rw [evalCR] at *
+    rw [evalCR] at *
     rw [ih]
-    rw [evalCR]
     rw [evalBR_succ]
     dsimp [CR_to_BR] at *
-    simp
-    congr
-
-
+    rw [ih]
 
 
 -- lemma 3.16
@@ -418,28 +409,91 @@ lemma mul_const_to_CR (r c0 : ℝ) (cr : CR) (n : ℕ) :
 def evalPureCR (bop : BinOp) (pcr' : PureCR bop) (n : ℕ) :=
   evalCR (PureCR_to_CR bop pcr') n
 
-lemma pureCR_zero (bop : BinOp) (x : ℝ) (pcr' : PureCR bop):
+lemma evalPureCR_zero (bop : BinOp) (x : ℝ) (pcr' : PureCR bop):
   evalPureCR bop (recurPureCR x pcr') 0 = x := by
-  rfl
+  rw [evalPureCR, PureCR_to_CR]
+  simp
 
-lemma pureCR_succ (bop : BinOp) (x : ℝ) (pcr' : PureCR bop):
+lemma evalPureCR_succ (bop : BinOp) (x : ℝ) (pcr' : PureCR bop):
   evalPureCR bop (recurPureCR x pcr') (n+1) = evalBinOp bop (evalPureCR bop (recurPureCR x pcr') n) (evalPureCR bop pcr' n) := by
-  rw [evalPureCR]
-  rw [evalPureCR]
-  rw [evalPureCR]
+  simp [evalPureCR]
   rw [PureCR_to_CR]
   rw [evalCR_succ]
   simp
 
-def CR_size : CR → ℕ
-| (liftBRToCR _) => 0
-| (recurCR _ _ cr') => 1 + CR_size cr'
 
 def PureCR_size {bop : BinOp} : PureCR bop → ℕ
 | (PureBR _ _) => 0
 | (recurPureCR _ pcr') => 1 + PureCR_size pcr'
 
--- lemma 1
+def pureCR_mul_scalar (c : ℝ) : PureCR Add → PureCR Add
+| PureBR c0 x => PureBR (c * c0) (c * x)
+| recurPureCR r pcr' => recurPureCR (c * r) (pureCR_mul_scalar c pcr')
+
+-- lemma 18
+lemma add_const_to_pure_sum_CR (c : ℝ) (phi : PureCR Add) :
+  ∀ n, c * evalPureCR Add phi n = evalPureCR Add (pureCR_mul_scalar c phi) n := by
+  induction phi with
+  | PureBR c0 x =>
+    intro n
+    dsimp[evalPureCR, pureCR_mul_scalar, PureCR_to_CR]
+    rw [evalCR] at *
+    rw [evalCR] at *
+    rw [CR_to_BR] at *
+    rw [CR_to_BR] at *
+    rw [mul_constant_to_BR]
+  | recurPureCR r pcr' ih =>
+    intro n
+    induction n with
+    | zero =>
+      simp [evalPureCR, PureCR_to_CR, evalCR_zero]
+    | succ n n_ih =>
+      rw [evalPureCR_succ]
+      dsimp [pureCR_mul_scalar]
+      rw [evalPureCR_succ]
+      rw [evalBinOp]
+      rw [mul_add]
+      rw [n_ih]
+      simp
+      rw [ih]
+      rw [← pureCR_mul_scalar]
+
+
+
+
+def f11 (i : ℕ) : ℝ := 1 + i^2
+def br1 : BR := BR.mk 1 BinOp.Add f11
+def cr1 : CR := liftBRToCR br1
+
+#eval evalBR br1 4
+#eval evalCR cr1 4
+
+def cr2 := recurCR 10 BinOp.Add cr1
+#eval evalCR cr2 1
+
+
+noncomputable def cos_seq (x0 h : ℝ) (i : ℕ) : ℝ :=
+  Real.cos (20 * (x0 + i * h))
+
+noncomputable def br_cos (x0 h : ℝ) : BR :=
+  BR.mk 1 BinOp.Mul (cos_seq x0 h)
+
+noncomputable def cr_cos (x0 h : ℝ) : CR :=
+  liftBRToCR (br_cos x0 h)
+
+noncomputable def f0 (x0 h : ℝ) (i : ℕ) : ℝ := Real.exp (x0^2)
+noncomputable def f111 (x0 h : ℝ) (i : ℕ) : ℝ := Real.exp (2 * h * x0 * i + h^2 * i)
+noncomputable def f2 (x0 h : ℝ) (i : ℕ) : ℝ := Real.exp (2 * h^2 * i)
+
+noncomputable def br_f0 (x0 h : ℝ) : BR := BR.mk 1 BinOp.Mul (f0 x0 h)
+noncomputable def br_f1 (x0 h : ℝ) : BR := BR.mk 1 BinOp.Mul (f111 x0 h)
+noncomputable def br_f2 (x0 h : ℝ) : BR := BR.mk 1 BinOp.Mul (f2 x0 h)
+
+noncomputable def cr_f0 (x0 h : ℝ) : CR := liftBRToCR (br_f0 x0 h)
+noncomputable def cr_f1 (x0 h : ℝ) : CR := liftBRToCR (br_f1 x0 h)
+noncomputable def cr_f2 (x0 h : ℝ) : CR := liftBRToCR (br_f2 x0 h)
+
+
 
 
 -- algorithm CRMake
