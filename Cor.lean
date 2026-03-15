@@ -1,6 +1,6 @@
 -- This module serves as the root of the `Cor` library.
 -- Import modules here that should be built as part of the library.
-import Cor.Basic
+--import Cor.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.List.Basic
 import Mathlib.Data.List.Range
@@ -333,15 +333,6 @@ def CR_to_BR : CR → BR
 def evalCR (cr : CR) (n : ℕ) : ℝ :=
   evalBR (CR_to_BR cr) n
 
-
-def factorial : ℕ → ℝ
-  | 0 => 1
-  | k + 1 => (k + 1) * factorial k
-
-def falling_factorial (x : ℝ) : ℕ → ℝ
-  | 0 => 1
-  | k + 1 => (x - k) * falling_factorial x k
-
 def PureCR_to_CR (bop : BinOp) (pcr : PureCR bop) : CR :=
 match pcr with
 | PureBR c0 c1 => liftBRToCR (BR.mk c0 bop (λ _ => c1))
@@ -608,14 +599,36 @@ def CRProd : (phi psi : PureCR Add) → PureCR Add
       recurPureCR (φ0 * ψ0) (pure_add xi_prime xi_double_prime (by sorry))
 
 
+def factorial : ℕ → ℝ
+  | 0 => 1
+  | k + 1 => (k + 1) * factorial k
+
+def falling_factorial (x : ℝ) : ℕ → ℝ
+  | 0 => 1
+  | k + 1 => (x - k) * falling_factorial x k
+
+@[simp] lemma falling_factorial_zero (x : ℝ) : falling_factorial x 0 = 1 := rfl
+@[simp] lemma falling_factorial_succ (x : ℝ) (k : ℕ) :
+  falling_factorial x (k + 1) = (x - k) * falling_factorial x k := rfl
+
+noncomputable def factorial_poly_loop (i : ℕ) : PureCR Add → ℕ → ℝ
+  | .PureBR c0 x, j =>
+    (c0 / factorial j) * falling_factorial i j +
+    (x / factorial (j + 1)) * falling_factorial i (j + 1)
+  | .recurPureCR r pcr', j =>
+    (r / factorial j) * falling_factorial i j + factorial_poly_loop i pcr' (j + 1)
+
 noncomputable def factorial_poly_sum (phi : PureCR Add) (i : ℕ) : ℝ :=
-  let rec loop : PureCR Add → ℕ → ℝ
-    | .PureBR c0 x, j =>
-      (c0 / factorial j) * falling_factorial i j +
-      (x / factorial (j + 1)) * falling_factorial i (j + 1)
-    | .recurPureCR r pcr', j =>
-      (r / factorial j) * falling_factorial i j + loop pcr' (j + 1)
-  loop phi 0
+  factorial_poly_loop i phi 0
+
+--noncomputable def factorial_poly_sum (phi : PureCR Add) (i : ℕ) : ℝ :=
+--  let rec loop : PureCR Add → ℕ → ℝ
+--    | .PureBR c0 x, j =>
+--      (c0 / factorial j) * falling_factorial i j +
+--      (x / factorial (j + 1)) * falling_factorial i (j + 1)
+--    | .recurPureCR r pcr', j =>
+--      (r / factorial j) * falling_factorial i j + loop pcr' (j + 1)
+--  loop phi 0
 
 @[simp]
 lemma ff_0 (x : ℝ) :
@@ -638,18 +651,19 @@ lemma zero_ff {i : ℕ} (h : i > 0):
       ring
 
 -- Todo: do we even need the sum expr?
+@[simp]
 lemma factorial_poly_sum_loop_zero {phi : PureCR BinOp.Add} {j : ℕ} (hj : j > 0) :
-  factorial_poly_sum.loop 0 phi j = 0 := by
+  factorial_poly_loop 0 phi j = 0 := by
   induction phi generalizing j with
   | PureBR c0 x =>
-    unfold factorial_poly_sum.loop
+    unfold factorial_poly_loop
     simp
     ring
     rw [zero_ff]
     simp
     exact hj
   | recurPureCR r pcr' ih =>
-    unfold factorial_poly_sum.loop
+    unfold factorial_poly_loop
     simp
     rw [zero_ff]
     . simp
@@ -657,14 +671,42 @@ lemma factorial_poly_sum_loop_zero {phi : PureCR BinOp.Add} {j : ℕ} (hj : j > 
       simp [hj]
     . exact hj
 
+@[simp] lemma factorial_poly_sum_recur_step (r : ℝ) (pcr' : PureCR Add) (i : ℕ) (j : ℕ) :
+  factorial_poly_loop i (.recurPureCR r pcr') j =
+    (r / factorial j) * falling_factorial i j + factorial_poly_loop i pcr' (j + 1) := rfl
+
+lemma factorial_poly_loop_succ (phi : PureCR Add) (i j : ℕ) :
+  factorial_poly_loop (i + 1) phi (j + 1) =
+    factorial_poly_loop i phi (j + 1) + factorial_poly_loop i phi j := by
+  induction phi generalizing i j
+  case PureBR c0 x =>
+    simp [factorial_poly_loop]
+    -- Use the identity: (i+1).fallingFactorial k / k! = i.fallingFactorial k / k! + i.fallingFactorial (k-1) / (k-1)!
+    sorry
+  case recurPureCR r pcr' ih =>
+    simp [factorial_poly_loop]
+    rw [ih]
+    ring_nf
+    field_simp
+    ring_nf
+    field_simp
+
+    sorry
+
+@[simp] lemma falling_factorial_pascal (i j : ℕ) :
+  falling_factorial (i + 1) (j + 1) / factorial (j + 1) =
+  falling_factorial i (j + 1) / factorial (j + 1) + falling_factorial i j / factorial j := by
+  simp
+  sorry
+
 lemma lemma_1_ (phi : PureCR Add) (i : ℕ) :
   evalPureCR Add phi i = factorial_poly_sum phi i := by
-  simp [factorial_poly_sum, factorial_poly_sum.loop]
+  simp [factorial_poly_sum, factorial_poly_loop]
   induction phi with
   | PureBR c0 x =>
     simp [evalPureCR, PureCR_to_CR]
     rw [evalCR, CR_to_BR]
-    unfold factorial_poly_sum.loop
+    unfold factorial_poly_loop
     rw [evalBR_add_equals_sum_f]
     simp
     simp [factorial, falling_factorial]
@@ -672,23 +714,17 @@ lemma lemma_1_ (phi : PureCR Add) (i : ℕ) :
   | recurPureCR r pcr' ih =>
     induction i with
     | zero =>
-      simp [factorial_poly_sum, factorial_poly_sum.loop]
+      simp [factorial_poly_sum, factorial_poly_loop]
       simp [evalPureCR, PureCR_to_CR, factorial]
-      unfold factorial_poly_sum.loop
-      simp
-      split
-      . next c0 x j =>
-        simp
-      . next r pcr' j =>
-        simp
-        sorry
     | succ i ihh =>
       rw [evalPureCR_succ, evalBinOp]
       simp
-      rw [ihh]
-      unfold factorial_poly_sum.loop
+      erw [ihh]
+      simp [factorial]
+      unfold factorial_poly_loop
       simp
       simp [factorial]
+
       sorry
       sorry
 
@@ -696,8 +732,8 @@ lemma lemma_1 (phi : PureCR Add) (i : ℕ) :
   evalPureCR Add phi i = factorial_poly_sum phi i := by
   induction i generalizing phi with
   | zero =>
-    simp [factorial_poly_sum, factorial_poly_sum.loop, evalPureCR, evalCR_zero_]
-    unfold factorial_poly_sum.loop
+    simp [factorial_poly_sum, factorial_poly_loop, evalPureCR, evalCR_zero_]
+    unfold factorial_poly_loop
     cases phi
     . simp
       rw [factorial]
@@ -706,13 +742,10 @@ lemma lemma_1 (phi : PureCR Add) (i : ℕ) :
       simp
       unfold PureCR_to_CR
       simp
-
     . simp
       simp [factorial]
       unfold CR_to_BR
       unfold PureCR_to_CR
-      simp
-      rw [factorial_poly_sum_loop_zero]
       simp
   | succ i ih =>
     simp [evalPureCR_succ_]
@@ -720,16 +753,26 @@ lemma lemma_1 (phi : PureCR Add) (i : ℕ) :
     cases phi
     . simp
       unfold factorial_poly_sum
-      unfold factorial_poly_sum.loop
+      unfold factorial_poly_loop
       simp [zero_ff, ff_0, factorial]
       rename_i a1 a2
-      unfold falling_factorial
-      simp [zero_ff]
+      --unfold falling_factorial
+      --simp [zero_ff]
       ring
     . simp
       rename_i a1 a2
       rw [ih]
       unfold factorial_poly_sum
+      simp
+      simp [factorial]
+      rw [add_assoc]
+      congr 1
+      conv_rhs =>
+        unfold factorial_poly_loop
+
+
+
+
       sorry
 
 def f11 (i : ℕ) : ℝ := 1 + i^2
