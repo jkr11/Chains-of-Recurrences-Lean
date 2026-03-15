@@ -160,14 +160,6 @@ lemma evalCR_succ (φ : α) (op : BinOp) (Δ : CR α) (n : ℕ) :
     evalBinOp op (evalCR (.recur φ op Δ) n) (evalCR Δ n) := by
   rfl
 
---def CR.isPureSum : CR α → Prop
---| .const _ => True
---| .recur _ op Δ => op = BinOp.Add ∧ Δ.isPureSum
---
---def CR.isPureProd : CR α → Prop
---| .const _ => True
---| .recur _ op Δ => op = BinOp.Add ∧ Δ.isPureProd
-
 def CR.isPureOp (op : BinOp) : CR α → Prop
   | .const _ => True
   | .recur _ bop next => bop = op ∧ next.isPureOp op
@@ -230,8 +222,7 @@ lemma CR_smul (Φ : CR α) (n : ℕ) :
         simp_rw [ih]
         simp [ihh]
       . simp [CR.smul] at *
-        rw [← mul_assoc]
-        rw [ihh]
+        rw [← mul_assoc, ihh]
 
 inductive CRExpr (α : Type*)
 | const (f : ℕ → α) : CRExpr α
